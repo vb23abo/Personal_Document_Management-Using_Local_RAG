@@ -33,9 +33,8 @@ pip install -r requirements.txt
 
 3. Optional: copy [`.env.example`](.env.example) to `.env` and set `EMBEDDING_MODEL_PATH`, `OLLAMA_MODEL_NAME`, OpenSearch host/port/index, etc. Defaults in [`src/constants.py`](src/constants.py) work for a local setup.
 
-4. Optional: place your logo at `images/logo.png` (sidebar shows the product name if missing).
 
-5. Run the app:
+4. Run the app:
 
 ```bash
 streamlit run Welcome.py
