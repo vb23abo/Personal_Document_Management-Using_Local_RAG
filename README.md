@@ -1,58 +1,71 @@
 # Personal Document Management - using local RAG
 
-Private, offline document search and Q&A for your own PDFs. Upload documents, index them in OpenSearch with hybrid (keyword + semantic) search, and chat with a local LLM via Ollama — no cloud upload of your files.
+A private, fully local document Q&A application. Upload PDFs, index them with hybrid search (keyword + semantic), and chat with a local LLM. Your files never leave your machine.
 
-## Features
+| | |
+|---|---|
+| **UI** | Streamlit |
+| **Search** | OpenSearch hybrid (BM25 + kNN) |
+| **Embeddings** | Sentence Transformers |
+| **LLM** | Ollama (local) |
 
-- **Local RAG chatbot** — answers grounded in your indexed documents, with source citations
-- **Hybrid search** — BM25 text matching plus vector (kNN) retrieval in OpenSearch
-- **PDF upload & OCR** — extract text from digital and scanned PDFs
-- **Configurable models** — Sentence Transformers embeddings + Ollama chat model (via `.env`)
+## Quick start
 
-## Requirements
-
-- Python 3.10+
-- [OpenSearch](https://opensearch.org/) running locally (default `localhost:9200`) with hybrid search support
-- [Ollama](https://ollama.com/) with a pulled chat model (default `llama3.2:1b`)
-- Optional: [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) for scanned PDFs
-
-## Setup
-
-1. Clone the repo:
+**Prerequisites:** Python 3.10+, [OpenSearch](https://opensearch.org/) on `localhost:9200`, [Ollama](https://ollama.com/) with a chat model, optional [Tesseract](https://github.com/tesseract-ocr/tesseract) for scanned PDFs.
 
 ```bash
 git clone https://github.com/vb23abo/Personal_Document_Management-Using_Local_RAG.git
 cd Personal_Document_Management-Using_Local_RAG
-```
-
-2. Install dependencies:
-
-```bash
 pip install -r requirements.txt
-```
-
-3. Optional: copy [`.env.example`](.env.example) to `.env` and set `EMBEDDING_MODEL_PATH`, `OLLAMA_MODEL_NAME`, OpenSearch host/port/index, etc. Defaults in [`src/constants.py`](src/constants.py) work for a local setup.
-
-
-4. Run the app:
-
-```bash
+# optional: cp .env.example .env
 streamlit run Welcome.py
 ```
 
-On startup the app creates the OpenSearch `documents` index (if missing) and the `nlp-search-pipeline` hybrid search pipeline automatically.
+1. Open **Upload Documents**, select PDFs, click **Index uploaded files**.
+2. Open **Chatbot**, keep **Enable RAG mode** on, and ask questions about your documents.
 
-**Index mapping note:** vectors use cosine similarity (`cosinesimil`) with normalized embeddings. If you already have an older `documents` index built with L2, delete that index (or change `OPENSEARCH_INDEX`) so it can be recreated with the new mapping, then re-upload your PDFs.
+The app auto-creates the OpenSearch index and `nlp-search-pipeline` on startup.
 
-## Project layout
+## Features
 
-| Path | Role |
-|------|------|
-| `Welcome.py` | Landing page, health checks, navigation |
-| `pages/` | Chatbot and document upload UIs |
-| `src/ui.py` | Shared teal/black theme and branding |
-| `src/chat.py` | RAG prompt, citations, Ollama streaming |
-| `src/ingestion.py` / `src/opensearch.py` | Indexing and hybrid search |
-| `src/embeddings.py` / `src/ocr.py` / `src/utils.py` | Embeddings, PDF/OCR, chunking |
-| `.env.example` | Sample environment overrides |
-| `notebooks/` | Optional walkthrough notebooks |
+- Hybrid RAG retrieval with source citations under each answer
+- PDF text extraction with OCR fallback for scanned pages
+- Local-only stack (OpenSearch + Ollama + local embeddings)
+- Configurable models and hosts via `.env`
+- Welcome-page health checks for OpenSearch and Ollama
+- Teal/black branded Streamlit UI (`images/logo.png` optional)
+
+## Configuration
+
+Copy [`.env.example`](.env.example) to `.env` or edit defaults in [`src/constants.py`](src/constants.py).
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `EMBEDDING_MODEL_PATH` | `sentence-transformers/all-mpnet-base-v2` | Embedding model |
+| `OLLAMA_MODEL_NAME` | `llama3.2:1b` | Chat model |
+| `OPENSEARCH_HOST` / `PORT` / `INDEX` | `localhost` / `9200` / `documents` | Search backend |
+| `TEXT_CHUNK_SIZE` / `OVERLAP` | `300` / `100` | Word-based chunking |
+
+Vectors use **cosine similarity** with normalized embeddings. If you previously indexed with L2, delete the old index (or change `OPENSEARCH_INDEX`) and re-upload documents.
+
+## Project structure
+
+```
+Welcome.py                 # Landing + health checks
+pages/                     # Chatbot + Upload UIs
+src/                       # RAG core (chat, ingest, search, OCR, embeddings)
+documents/                 # Product & technical requirements (PRD, TRD)
+notebooks/                 # Optional walkthrough notebooks
+.env.example               # Sample environment overrides
+```
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [documents/PRD.md](documents/PRD.md) | Product Requirements Document |
+| [documents/TRD.md](documents/TRD.md) | Technical Requirements Document |
+
+## License
+
+MIT — see [LICENSE](LICENSE).
