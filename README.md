@@ -33,7 +33,7 @@ The app auto-creates the OpenSearch index and `nlp-search-pipeline` on startup.
 - Local-only stack (OpenSearch + Ollama + local embeddings)
 - Configurable models and hosts via `.env`
 - Welcome-page health checks for OpenSearch and Ollama
-- Teal/black branded Streamlit UI (`images/logo.png` optional)
+- Teal/black branded Streamlit UI
 
 ## Configuration
 
