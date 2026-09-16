@@ -11,6 +11,7 @@ from src.opensearch import get_opensearch_client
 from src.ui import (
     PRODUCT_NAME,
     apply_theme,
+    page_header,
     render_sidebar_footer,
     render_sidebar_header,
 )
@@ -19,7 +20,12 @@ from src.utils import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-st.set_page_config(page_title=f"{PRODUCT_NAME} - Chatbot", page_icon="🤖")
+st.set_page_config(
+    page_title=f"{PRODUCT_NAME} - Chatbot",
+    page_icon="🤖",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 
 def _render_citations(citations: List[Dict[str, Any]]) -> None:
@@ -40,7 +46,10 @@ def render_chatbot_page() -> None:
     apply_theme()
     render_sidebar_header(tagline="Chat with your documents")
 
-    st.title(f"{PRODUCT_NAME} - Chatbot")
+    page_header(
+        "Chatbot",
+        "Ask questions about your indexed documents. Enable RAG to ground answers in your files.",
+    )
     model_loading_placeholder = st.empty()
 
     if "use_hybrid_search" not in st.session_state:
@@ -153,15 +162,29 @@ def render_chatbot_page() -> None:
                 return
 
             for chunk in response_stream:
-                if (
-                    isinstance(chunk, dict)
-                    and "message" in chunk
-                    and "content" in chunk["message"]
-                ):
-                    response_text += chunk["message"]["content"]
+                content = ""
+                if isinstance(chunk, dict):
+                    content = (
+                        chunk.get("message", {}).get("content")
+                        if isinstance(chunk.get("message"), dict)
+                        else ""
+                    ) or ""
+                else:
+                    message = getattr(chunk, "message", None)
+                    content = getattr(message, "content", None) or ""
+
+                if content:
+                    response_text += content
                     response_placeholder.markdown(response_text + "▌")
                 else:
-                    logger.error("Unexpected chunk format in response stream.")
+                    # Final stream frames often have empty content; ignore those.
+                    done = (
+                        chunk.get("done")
+                        if isinstance(chunk, dict)
+                        else getattr(chunk, "done", False)
+                    )
+                    if not done:
+                        logger.warning("Skipping stream chunk with no content: %s", type(chunk))
 
             if not response_text.strip():
                 st.error("The model returned an empty response.")
