@@ -14,11 +14,14 @@
             "embedding": {
                 "type": "knn_vector",
                 "dimension": "{{EMBEDDING_DIMENSION}}",
-                "method": {
-                    "engine": "faiss",
+                    "method": {
+                    "engine": "lucene",
                     "space_type": "cosinesimil",
                     "name": "hnsw",
-                    "parameters": {}
+                    "parameters": {
+                        "ef_construction": 100,
+                        "m": 16
+                    }
                 }
             },
             "document_name": {

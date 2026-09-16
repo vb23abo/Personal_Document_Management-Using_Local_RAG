@@ -110,7 +110,7 @@ Skip retrieval; prompt uses conversation history + general assistant instruction
 | Field | Type | Notes |
 |-------|------|-------|
 | `text` | `text` | Raw chunk text for BM25 (no embedding prefix stored) |
-| `embedding` | `knn_vector` dim=`EMBEDDING_DIMENSION` | `faiss` / `hnsw` / `cosinesimil` |
+| `embedding` | `knn_vector` dim=`EMBEDDING_DIMENSION` | `lucene` / `hnsw` / `cosinesimil` |
 | `document_name` | `keyword` | Source filename; used for list/delete aggregations |
 
 **Document `_id`:** `{document_name}_{chunk_index}`

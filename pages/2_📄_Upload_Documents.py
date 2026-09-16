@@ -21,6 +21,7 @@ from src.opensearch import get_opensearch_client
 from src.ui import (
     PRODUCT_NAME,
     apply_theme,
+    page_header,
     render_sidebar_footer,
     render_sidebar_header,
 )
@@ -29,7 +30,12 @@ from src.utils import chunk_text, sanitize_filename, setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-st.set_page_config(page_title=f"{PRODUCT_NAME} - Upload Documents", page_icon="📂")
+st.set_page_config(
+    page_title=f"{PRODUCT_NAME} - Upload Documents",
+    page_icon="📂",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 UPLOAD_DIR = "uploaded_files"
 
@@ -51,7 +57,10 @@ def render_upload_page() -> None:
     render_sidebar_header(tagline="Upload and index documents")
     render_sidebar_footer()
 
-    st.title("Upload Documents")
+    page_header(
+        "Upload Documents",
+        "Add PDFs to your private index. Files are chunked, embedded, and stored in OpenSearch.",
+    )
     model_loading_placeholder = st.empty()
 
     if "embedding_model_ready" not in st.session_state:
