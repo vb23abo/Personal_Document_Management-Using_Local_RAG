@@ -11,12 +11,14 @@ from src.constants import (
     TEXT_CHUNK_SIZE,
 )
 from src.embeddings import generate_embeddings, get_embedding_model
+from src.extract import SUPPORTED_EXTENSIONS, extract_text
 from src.ingestion import (
     bulk_index_documents,
+    clear_all_documents,
     create_index,
     delete_documents_by_document_name,
+    recreate_index,
 )
-from src.ocr import extract_text_from_pdf
 from src.opensearch import get_opensearch_client
 from src.ui import (
     PRODUCT_NAME,
@@ -24,6 +26,7 @@ from src.ui import (
     page_header,
     render_sidebar_footer,
     render_sidebar_header,
+    require_local_access,
 )
 from src.utils import chunk_text, sanitize_filename, setup_logging
 
@@ -40,10 +43,9 @@ st.set_page_config(
 UPLOAD_DIR = "uploaded_files"
 
 
-def save_uploaded_file(uploaded_file) -> str:  # type: ignore
+def save_uploaded_file(uploaded_file, safe_name: str) -> str:  # type: ignore
     """Saves an uploaded file to the local file system using a sanitized name."""
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-    safe_name = sanitize_filename(uploaded_file.name)
     file_path = os.path.join(UPLOAD_DIR, safe_name)
     with open(file_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
@@ -51,15 +53,38 @@ def save_uploaded_file(uploaded_file) -> str:  # type: ignore
     return file_path
 
 
+def delete_local_uploads() -> None:
+    """Remove files saved under the upload folder."""
+    if not os.path.isdir(UPLOAD_DIR):
+        return
+    for name in os.listdir(UPLOAD_DIR):
+        path = os.path.join(UPLOAD_DIR, name)
+        if os.path.isfile(path):
+            try:
+                os.remove(path)
+            except OSError as e:
+                logger.warning("Could not remove '%s': %s", path, e)
+
+
+def discard_uploaded_file(file_path: str) -> None:
+    """Remove a file that was saved but will not stay in the index."""
+    try:
+        os.remove(file_path)
+        logger.info("Removed unindexed file '%s'.", file_path)
+    except OSError as e:
+        logger.warning("Could not remove unindexed file '%s': %s", file_path, e)
+
+
 def render_upload_page() -> None:
     """Renders the document upload page for users to upload and manage PDFs."""
     apply_theme()
+    require_local_access()
     render_sidebar_header(tagline="Upload and index documents")
     render_sidebar_footer()
 
     page_header(
         "Upload Documents",
-        "Add PDFs to your private index. Files are chunked, embedded, and stored in OpenSearch.",
+        "Add PDF, DOCX, TXT, or Markdown files. They are chunked, embedded, and stored in OpenSearch.",
     )
     model_loading_placeholder = st.empty()
 
@@ -96,7 +121,26 @@ def render_upload_page() -> None:
 
     document_names = [bucket["key"] for bucket in buckets]
     chunk_counts = {bucket["key"]: bucket["doc_count"] for bucket in buckets}
+    total_chunks = sum(chunk_counts.values())
     logger.info("Retrieved document names from OpenSearch.")
+    st.caption(
+        f"{len(document_names)} document(s), {total_chunks} chunk(s) in the index."
+    )
+
+    admin_col1, admin_col2 = st.columns(2)
+    with admin_col1:
+        if st.button("Clear index"):
+            clear_all_documents()
+            st.session_state["deleted_file"] = "all indexed documents"
+            time.sleep(0.5)
+            st.rerun()
+    with admin_col2:
+        if st.button("Recreate index"):
+            recreate_index()
+            delete_local_uploads()
+            st.session_state["deleted_file"] = "the index and local uploads"
+            time.sleep(0.5)
+            st.rerun()
 
     documents = []
     for document_name in document_names:
@@ -121,23 +165,35 @@ def render_upload_page() -> None:
         del st.session_state["deleted_file"]
 
     uploaded_files = st.file_uploader(
-        "Upload PDF documents", type="pdf", accept_multiple_files=True
+        "Upload documents",
+        type=list(SUPPORTED_EXTENSIONS),
+        accept_multiple_files=True,
     )
 
     if uploaded_files and st.button("Index uploaded files", type="primary"):
         indexed_count = 0
         with st.spinner("Uploading and processing documents. Please wait..."):
             for uploaded_file in uploaded_files:
-                safe_name = sanitize_filename(uploaded_file.name)
+                try:
+                    safe_name = sanitize_filename(uploaded_file.name)
+                except ValueError as e:
+                    st.error(f"Skipped an upload: {e}")
+                    continue
                 if safe_name in document_names:
                     st.warning(
                         f"The file '{safe_name}' already exists in the index."
                     )
                     continue
 
-                file_path = save_uploaded_file(uploaded_file)
-                text = extract_text_from_pdf(file_path)
+                file_path = save_uploaded_file(uploaded_file, safe_name)
+                try:
+                    text = extract_text(file_path)
+                except ValueError as e:
+                    discard_uploaded_file(file_path)
+                    st.error(f"Skipped '{safe_name}': {e}")
+                    continue
                 if len(text.strip()) < MIN_EXTRACTED_CHARS:
+                    discard_uploaded_file(file_path)
                     st.warning(
                         f"Skipped '{safe_name}': extracted text too short "
                         f"({len(text.strip())} chars). Check OCR/Tesseract."
@@ -152,10 +208,12 @@ def render_upload_page() -> None:
                         overlap=TEXT_CHUNK_OVERLAP,
                     )
                 except ValueError as e:
+                    discard_uploaded_file(file_path)
                     st.error(f"Chunking failed for '{safe_name}': {e}")
                     continue
 
                 if not chunks:
+                    discard_uploaded_file(file_path)
                     st.warning(f"Skipped '{safe_name}': no chunks produced.")
                     continue
 
@@ -170,6 +228,13 @@ def render_upload_page() -> None:
                     for i, (chunk, embedding) in enumerate(zip(chunks, embeddings))
                 ]
                 success, errors = bulk_index_documents(documents_to_index)
+                if success == 0:
+                    discard_uploaded_file(file_path)
+                    st.error(
+                        f"Could not index '{safe_name}'"
+                        + (f" ({len(errors)} bulk error(s))." if errors else ".")
+                    )
+                    continue
                 if errors:
                     st.warning(
                         f"Indexed '{safe_name}' with {len(errors)} bulk error(s)."

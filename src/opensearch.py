@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from opensearchpy import OpenSearch
 
@@ -42,12 +42,25 @@ def get_opensearch_client() -> OpenSearch:
 
 def check_opensearch_healthy() -> bool:
     """Returns True if OpenSearch responds to ping."""
+    reachable, _index_ready = get_opensearch_status()
+    return reachable
+
+
+def get_opensearch_status() -> Tuple[bool, bool]:
+    """Return ``(reachable, index_ready)``.
+
+    Reachable means ping succeeded. The index is ready only when
+    ``OPENSEARCH_INDEX`` already exists.
+    """
     try:
         client = get_opensearch_client()
-        return bool(client.ping())
+        if not client.ping():
+            return False, False
+        index_ready = bool(client.indices.exists(index=OPENSEARCH_INDEX))
+        return True, index_ready
     except Exception as e:
         logger.warning("OpenSearch health check failed: %s", e)
-        return False
+        return False, False
 
 
 def ensure_search_pipeline(client: OpenSearch) -> None:

@@ -76,7 +76,9 @@ def bulk_index_documents(documents: List[Dict[str, Any]]) -> Tuple[int, List[Any
         }
         actions.append(action)
 
-    success, errors = helpers.bulk(client, actions, raise_on_error=False)
+    success, errors = helpers.bulk(
+        client, actions, raise_on_error=False, refresh="wait_for"
+    )
     error_list: List[Any] = errors if isinstance(errors, list) else []
     logger.info(
         "Bulk indexed %s documents into index %s with %s errors.",
@@ -87,12 +89,35 @@ def bulk_index_documents(documents: List[Dict[str, Any]]) -> Tuple[int, List[Any
     return success, error_list
 
 
+def clear_all_documents() -> Dict[str, Any]:
+    """Delete every document in the index and leave the index in place."""
+    client = get_opensearch_client()
+    if not client.indices.exists(index=OPENSEARCH_INDEX):
+        return {"deleted": 0}
+    response: Dict[str, Any] = client.delete_by_query(
+        index=OPENSEARCH_INDEX,
+        body={"query": {"match_all": {}}},
+        refresh=True,
+    )
+    logger.info("Cleared all documents from index %s.", OPENSEARCH_INDEX)
+    return response
+
+
+def recreate_index() -> None:
+    """Delete the index and create it again, including the search pipeline."""
+    client = get_opensearch_client()
+    delete_index(client)
+    create_index(client)
+
+
 def delete_documents_by_document_name(document_name: str) -> Dict[str, Any]:
     """Deletes documents from OpenSearch where 'document_name' matches."""
     client = get_opensearch_client()
     query = {"query": {"term": {"document_name": document_name}}}
     response: Dict[str, Any] = client.delete_by_query(
-        index=OPENSEARCH_INDEX, body=query
+        index=OPENSEARCH_INDEX,
+        body=query,
+        refresh=True,
     )
     logger.info(
         "Deleted documents with name '%s' from index %s.",

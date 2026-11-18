@@ -60,11 +60,12 @@ This document specifies the technical architecture, components, interfaces, data
 | Path | Responsibility |
 |------|----------------|
 | `Welcome.py` | Landing page, service health, navigation CTAs |
-| `pages/1_🤖_Chatbot.py` | Chat UX, RAG controls, streaming, citations |
-| `pages/2_📄_Upload_Documents.py` | Upload, index, list, delete |
+| `pages/1_📄_Upload_Documents.py` | Upload, index, list, delete, clear, recreate |
+| `pages/2_🤖_Chatbot.py` | Chat UX, RAG controls, streaming, stop, citations |
 | `src/constants.py` | Env-backed configuration |
-| `src/ui.py` | Theme, branding, sidebar chrome |
-| `src/ocr.py` | PDF text extraction + OCR fallback |
+| `src/ui.py` | Theme, branding, sidebar chrome, optional password gate |
+| `src/extract.py` | PDF, DOCX, TXT, and Markdown text extraction |
+| `src/ocr.py` | PDF text extraction, embedded-image OCR, full-page OCR |
 | `src/utils.py` | Logging, cleaning, chunking, filename sanitize |
 | `src/embeddings.py` | Model load (`lru_cache`), batched encode |
 | `src/ingestion.py` | Index create, bulk index, delete-by-name |
@@ -73,6 +74,8 @@ This document specifies the technical architecture, components, interfaces, data
 | `src/index_config.json` | Index settings/mappings template |
 | `documents/` | PRD / TRD product docs |
 | `.env.example` | Documented environment overrides |
+| `docker-compose.yml` | Local OpenSearch 2.19.2 |
+| `tests/` | Pytest unit and mocked retrieval tests |
 
 ---
 
@@ -80,11 +83,11 @@ This document specifies the technical architecture, components, interfaces, data
 
 ### 4.1 Ingestion
 
-1. User selects PDFs and clicks **Index uploaded files**
-2. Filename sanitized via `Path(name).name`
+1. User selects PDF, DOCX, TXT, or Markdown files and clicks **Index uploaded files**
+2. Filename sanitized via `sanitize_filename` (basename only; `.` and `..` are rejected)
 3. File saved under `uploaded_files/`
-4. `extract_text_from_pdf` extracts text; empty pages fall back to OCR on embedded images
-5. If cleaned text length `< MIN_EXTRACTED_CHARS`, skip with warning
+4. `extract_text` reads PDF, DOCX, TXT, or Markdown. Empty PDF pages fall back to OCR on embedded images, then to a Poppler render of that page
+5. If cleaned text length `< MIN_EXTRACTED_CHARS`, the saved file is deleted and the upload is skipped with a warning
 6. `chunk_text` splits on words (`TEXT_CHUNK_SIZE`, `TEXT_CHUNK_OVERLAP`) with validation `0 ≤ overlap < chunk_size`
 7. `generate_embeddings` batch-encodes chunks (`normalize_embeddings=True`; optional `passage:` prefix if asymmetric mode)
 8. `bulk_index_documents` writes `{text, embedding, document_name}` with `raise_on_error=False`
@@ -94,7 +97,7 @@ This document specifies the technical architecture, components, interfaces, data
 1. Embed query (`query:` prefix if asymmetric; otherwise raw), normalized
 2. `hybrid_search` against OpenSearch using `nlp-search-pipeline`
 3. Build prompt with retrieved context + prior history (current user turn not duplicated)
-4. Stream Ollama chat chunks to UI
+4. Stream Ollama chat chunks to the UI on a background thread. **Stop generating** sets an event the reader checks between chunks
 5. Return citations `{document_name, snippet, score}` for Sources UI
 
 ### 4.3 Query (RAG off)
@@ -133,6 +136,7 @@ All primary knobs via environment / `.env` (see `.env.example`):
 - Chunking: `TEXT_CHUNK_SIZE`, `TEXT_CHUNK_OVERLAP`, `MIN_EXTRACTED_CHARS`
 - OpenSearch: `OPENSEARCH_HOST`, `OPENSEARCH_PORT`, `OPENSEARCH_INDEX`
 - Logging: `LOG_FILE_PATH`
+- Optional gate: `BASIC_AUTH_PASSWORD` (empty disables it)
 
 ### 6.2 Key Python APIs
 
@@ -179,7 +183,7 @@ All primary knobs via environment / `.env` (see `.env.example`):
 | Data residency | Default deployment keeps PDFs, embeddings, and chat local |
 | OpenSearch | Default client is unauthenticated HTTP to localhost; do not expose port publicly without auth/TLS |
 | Uploads | Basename-only filenames; files under `uploaded_files/` (gitignored) |
-| Secrets | `.env` gitignored; no API keys required for default local stack |
+| Secrets | `.env` gitignored; no API keys required for default local mode. `BASIC_AUTH_PASSWORD` is an optional shared password, not a user directory |
 | Prompt injection | Prompt instructs model to treat document context as untrusted data |
 
 ---
@@ -213,15 +217,15 @@ Changing `space_type` or embedding dimension requires deleting/recreating the in
 
 ---
 
-## 11. Testing requirements (target)
+## 11. Testing
 
 | Level | Scope |
 |-------|-------|
-| Unit | `clean_text`, `chunk_text` validation, `sanitize_filename`, citation assembly |
-| Integration | Mock OpenSearch bulk/search; mock Ollama stream |
-| Manual smoke | Upload → index → RAG question → citation → delete |
+| Unit | `clean_text`, `chunk_text` validation, `sanitize_filename`, citation assembly, text/markdown extraction |
+| Integration | Mock OpenSearch bulk/search; mock Ollama stream, including a stopped stream and RAG-off |
+| Manual smoke | Upload list, RAG answer with Sources, delete, and Ollama-down health. Passed against local OpenSearch and Ollama |
 
-Automated tests are desirable but not yet shipped as a required CI gate in this revision.
+`pytest` runs in GitHub Actions without an OpenSearch or Ollama service. Install local dev tools with `pip install -r requirements-dev.txt`.
 
 ---
 
@@ -229,7 +233,7 @@ Automated tests are desirable but not yet shipped as a required CI gate in this 
 
 | Risk | Mitigation |
 |------|------------|
-| OCR quality on hard scans | Image OCR fallback; document min-length skip; future full-page render |
+| OCR quality on hard scans | Embedded-image OCR, then full-page render via Poppler; document min-length skip |
 | Large PDFs / slow CPU embeds | Batching; user-triggered index; smaller models via `.env` |
 | Existing L2 index after cosine change | Documented recreate/re-upload path in README |
 | Ollama/OpenSearch down | Health checks + explicit UI errors |
@@ -244,5 +248,5 @@ Automated tests are desirable but not yet shipped as a required CI gate in this 
 | UC-3..UC-5 / FR-CH-* | §4.2–4.3, §6.2, TR-10 |
 | UC-6 / FR-OP-3 | §6.2 health APIs, Welcome |
 | FR-OP-1..2 | TR-1, `create_index` / `ensure_search_pipeline` |
-| NFR privacy/security | §8 |
+| NFR privacy/security | §8, optional `BASIC_AUTH_PASSWORD` |
 | NFR performance | TR-2, batched embeddings, no list OCR |

@@ -35,8 +35,6 @@ def apply_theme() -> None:
     st.markdown(
         f"""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Space+Grotesk:wght@500;600;700&display=swap');
-
         :root {{
             --pdm-bg: {COLOR_BG};
             --pdm-surface: {COLOR_SURFACE};
@@ -50,7 +48,7 @@ def apply_theme() -> None:
         }}
 
         html, body, [class*="css"] {{
-            font-family: "DM Sans", sans-serif;
+            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
             color: var(--pdm-text);
         }}
 
@@ -109,7 +107,7 @@ def apply_theme() -> None:
             margin: 0.5rem 0 1.25rem 0;
         }}
         .pdm-brand-title {{
-            font-family: "Space Grotesk", sans-serif;
+            font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
             font-size: 1.15rem;
             font-weight: 700;
             letter-spacing: -0.02em;
@@ -134,7 +132,7 @@ def apply_theme() -> None:
 
         /* Typography */
         h1, h2, h3 {{
-            font-family: "Space Grotesk", sans-serif !important;
+            font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif !important;
             color: var(--pdm-teal) !important;
             letter-spacing: -0.03em;
             font-weight: 700 !important;
@@ -299,7 +297,7 @@ def apply_theme() -> None:
 def display_logo(logo_path: str = LOGO_PATH) -> None:
     """Displays the logo in the sidebar, or a short-name placeholder if missing."""
     if os.path.exists(logo_path):
-        st.sidebar.image(logo_path, use_container_width=True)
+        st.sidebar.image(logo_path, width="stretch")
         logger.info("Logo displayed from %s.", logo_path)
     else:
         st.sidebar.markdown(
@@ -322,6 +320,24 @@ def render_sidebar_header(tagline: str = "using local RAG") -> None:
         unsafe_allow_html=True,
     )
     logger.info("Sidebar header rendered.")
+
+
+def require_local_access() -> None:
+    """Ask for BASIC_AUTH_PASSWORD when it is set. No-op when it is empty."""
+    from src.constants import BASIC_AUTH_PASSWORD
+
+    if not BASIC_AUTH_PASSWORD:
+        return
+    if st.session_state.get("authenticated"):
+        return
+    page_header("Locked", "Enter the shared password to use this app.")
+    password = st.text_input("Password", type="password")
+    if st.button("Continue"):
+        if password == BASIC_AUTH_PASSWORD:
+            st.session_state["authenticated"] = True
+            st.rerun()
+        st.error("Wrong password.")
+    st.stop()
 
 
 def render_sidebar_footer() -> None:

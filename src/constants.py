@@ -40,3 +40,6 @@ INDEX_CONFIG_PATH = Path(__file__).resolve().parent / "index_config.json"
 
 # Skip indexing when extracted text is shorter than this
 MIN_EXTRACTED_CHARS = int(os.getenv("MIN_EXTRACTED_CHARS", "40"))
+
+# Optional shared password. Empty means the local app stays open.
+BASIC_AUTH_PASSWORD = os.getenv("BASIC_AUTH_PASSWORD", "").strip()

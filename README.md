@@ -11,7 +11,7 @@ Ask questions about your own PDFs. The files stay on your machine. Search uses k
 
 ## What it does
 
-1. A PDF is read page by page. If a page has no text layer, the app runs OCR on images embedded in that page.
+1. A PDF, DOCX, TXT, or Markdown file is read into text. For a PDF page with no text layer, the app runs OCR on images embedded in that page, then renders the page with Poppler if those images yield nothing.
 2. The text is split into chunks of 300 words, with 100 words of overlap.
 3. Each chunk is embedded and stored in OpenSearch, along with the text used for keyword search.
 4. A question is embedded the same way. Search returns the top matches from keyword search and vector search together.
@@ -21,17 +21,20 @@ Nothing is uploaded to a hosted chat service. OpenSearch, the embedding model, a
 
 ## Run it
 
-You need Python 3.10 or newer, OpenSearch on `localhost:9200`, Ollama with a chat model, and Tesseract if you want OCR.
+You need Python 3.10 or newer, [Docker](https://docs.docker.com/get-docker/) for OpenSearch, [Ollama](https://ollama.com/) with a chat model, and Tesseract if you want OCR. Poppler is only needed when a PDF page has no text layer and no embedded images that Tesseract can read.
+
+`docker compose up -d` starts OpenSearch 2.19.2 on `localhost:9200` with the security plugin disabled. Do not expose that port beyond your machine. Pull the chat model with `ollama pull llama3.2:1b` (or set `OLLAMA_MODEL_NAME`). On macOS, `brew install tesseract poppler` covers OCR.
 
 ```bash
-git clone https://github.com/vb23abo/Personal_Document_Management-Using_Local_RAG.git
-cd Personal_Document_Management-Using_Local_RAG
+git clone https://github.com/vb23abo/personal_document_management-using_local_rag.git
+cd personal_document_management-using_local_rag
+docker compose up -d
 pip install -r requirements.txt
 cp .env.example .env
 streamlit run Welcome.py
 ```
 
-1. Open **Upload Documents**, choose PDFs, and click **Index uploaded files**.
+1. Open **Upload Documents**, choose files, and click **Index uploaded files**.
 2. Open **Chatbot**, leave **Enable RAG mode** on, and ask about those documents.
 
 On startup the app creates the `documents` index and the `nlp-search-pipeline` search pipeline if they are missing.
@@ -47,6 +50,7 @@ Copy [`.env.example`](.env.example) to `.env`. The same defaults live in [`src/c
 | `OPENSEARCH_HOST` / `PORT` / `INDEX` | `localhost` / `9200` / `documents` | Search |
 | `TEXT_CHUNK_SIZE` / `OVERLAP` | `300` / `100` | Chunks, counted in words |
 | `ASYMMETRIC_EMBEDDING` | `false` | If `true`, passages are prefixed with `passage:` and questions with `query:` |
+| `BASIC_AUTH_PASSWORD` | empty | If set, every page asks for this shared password |
 
 Embeddings are L2-normalised. Retrieval uses cosine similarity. If an older index was built with a different distance, delete it or change `OPENSEARCH_INDEX`, then upload the documents again.
 

@@ -22,8 +22,15 @@ def setup_logging() -> None:
 
 
 def sanitize_filename(filename: str) -> str:
-    """Return a safe basename (no path components) for uploaded files."""
-    return Path(filename).name
+    """Return a safe basename (no path components) for uploaded files.
+
+    Raises:
+        ValueError: If the name is empty, ``.``, or ``..``.
+    """
+    name = Path(filename).name
+    if name in {"", ".", ".."}:
+        raise ValueError("Filename is empty or not allowed.")
+    return name
 
 
 def clean_text(text: str) -> str:

@@ -17,7 +17,7 @@ People need to search and ask questions over personal PDFs without uploading sen
 
 A desktop-local web app that:
 
-1. Ingests personal PDF documents
+1. Ingests personal PDF, DOCX, TXT, and Markdown documents
 2. Indexes them for hybrid keyword + semantic search
 3. Answers natural-language questions with a local LLM, grounded in retrieved chunks
 4. Shows citations so users can verify answers
@@ -35,7 +35,6 @@ A desktop-local web app that:
 
 - Multi-user auth, roles, or cloud SaaS hosting
 - Collaborative editing or document versioning
-- Supported formats beyond PDF (DOCX/TXT/MD are future)
 - Fine-tuning or training custom LLMs
 - Mobile-native clients
 
@@ -68,7 +67,7 @@ Individual who keeps personal or work PDFs on their own machine and wants privat
 
 | ID | Requirement |
 |----|-------------|
-| FR-DM-1 | User can upload PDF files via the Upload page |
+| FR-DM-1 | User can upload PDF, DOCX, TXT, and Markdown files via the Upload page |
 | FR-DM-2 | Indexing runs only when the user clicks **Index uploaded files** |
 | FR-DM-3 | Duplicate filenames already in the index are skipped with a warning |
 | FR-DM-4 | Files with too little extracted text are skipped (configurable minimum) |
@@ -129,21 +128,27 @@ Individual who keeps personal or work PDFs on their own machine and wants privat
 
 ---
 
-## 7. Future roadmap (out of current PRD scope)
+## 7. Shipped after the first draft
 
-1. Additional file types (DOCX, TXT, Markdown)
-2. Index management UI (recreate index, clear all, chunk stats)
-3. Stop-generation control during streaming
-4. Stronger OCR (full-page render for scans)
-5. Optional basic auth for LAN exposure
-6. Automated tests for chunking, retrieval mocks, and smoke UI checks
+These were listed as future work and are now in the app:
+
+1. DOCX, TXT, and Markdown ingestion
+2. Index management on the Upload page (clear all documents, recreate the index, chunk totals)
+3. Stop control while an answer is streaming
+4. Full-page OCR when a PDF page has no text layer and no readable embedded images (requires Poppler)
+5. Optional shared password via `BASIC_AUTH_PASSWORD` (not user accounts)
+6. Automated tests for chunking, citations, and mocked retrieval (`pytest`, GitHub Actions)
+
+Still out of scope: multi-user accounts, fine-tuning, and a mobile client.
 
 ---
 
 ## 8. Acceptance criteria (MVP)
 
-- [ ] Fresh clone + dependencies + OpenSearch + Ollama can run `streamlit run Welcome.py`
-- [ ] User can index a PDF and see it in the document list with chunk count
-- [ ] User can ask a RAG question and see a streamed answer plus Sources
-- [ ] Deleting a document removes it from search results
-- [ ] With Ollama stopped, Welcome health check shows failure and Chatbot errors clearly
+Checked against a local OpenSearch 2.19 node on port 9200 and Ollama with `llama3.2:1b`.
+
+- [x] Fresh clone + dependencies + OpenSearch + Ollama can run `streamlit run Welcome.py`
+- [x] User can index a PDF and see it in the document list with chunk count
+- [x] User can ask a RAG question and see a streamed answer plus Sources
+- [x] Deleting a document removes it from search results
+- [x] With Ollama stopped, Welcome health check shows failure and Chatbot errors clearly

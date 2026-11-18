@@ -1,9 +1,8 @@
+from __future__ import annotations
+
 import logging
 from functools import lru_cache
 from typing import Any, List
-
-import numpy as np
-from sentence_transformers import SentenceTransformer
 
 from src.constants import ASYMMETRIC_EMBEDDING, EMBEDDING_MODEL_PATH
 from src.utils import setup_logging
@@ -21,6 +20,8 @@ def get_embedding_model() -> SentenceTransformer:
         SentenceTransformer: The loaded embedding model.
     """
     logger.info("Loading embedding model from path: %s", EMBEDDING_MODEL_PATH)
+    from sentence_transformers import SentenceTransformer
+
     return SentenceTransformer(EMBEDDING_MODEL_PATH)
 
 
@@ -46,6 +47,8 @@ def generate_embeddings(chunks: List[str]) -> List[np.ndarray[Any, Any]]:
         if ASYMMETRIC_EMBEDDING
         else list(chunks)
     )
+    import numpy as np
+
     vectors = model.encode(
         to_encode,
         batch_size=32,
