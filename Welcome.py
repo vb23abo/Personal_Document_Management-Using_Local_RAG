@@ -77,7 +77,7 @@ def display_main_content() -> None:
         <div class="pdm-card" style="margin-top:1rem;">
             <h3>What you can do</h3>
             <ul style="margin:0.4rem 0 0 1rem; color:#E8F1F2;">
-                <li><strong>Upload</strong> PDFs — chunked, embedded, and indexed locally</li>
+                <li><strong>Upload</strong> PDF, DOCX, TXT, or Markdown files — chunked, embedded, and indexed locally</li>
                 <li><strong>Chat</strong> with RAG on — answers grounded in your files with sources</li>
                 <li><strong>Stay private</strong> — OpenSearch + Ollama run on your machine</li>
             </ul>

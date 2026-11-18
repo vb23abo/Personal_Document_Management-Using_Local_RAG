@@ -3,7 +3,7 @@
 **Product:** Personal Document Management - using local RAG  
 **Owner:** vb23abo  
 **Status:** Active  
-**Last updated:** 2026-09-15
+**Last updated:** 2026-11-18
 
 ---
 
@@ -11,7 +11,7 @@
 
 ### 1.1 Problem
 
-People need to search and ask questions over personal PDFs without uploading sensitive content to cloud AI services. Existing cloud RAG tools trade convenience for privacy and vendor lock-in.
+People need to search and ask questions over personal documents (PDF, DOCX, TXT, and Markdown) without uploading sensitive content to cloud AI services. Existing cloud RAG tools trade convenience for privacy and vendor lock-in.
 
 ### 1.2 Solution
 
@@ -44,13 +44,13 @@ A desktop-local web app that:
 
 ### 2.1 Primary user
 
-Individual who keeps personal or work PDFs on their own machine and wants private Q&A (students, researchers, knowledge workers).
+Individual who keeps personal or work documents on their own machine and wants private Q&A (students, researchers, knowledge workers).
 
 ### 2.2 Core use cases
 
 | ID | Use case | Priority |
 |----|----------|----------|
-| UC-1 | Upload one or more PDFs and index them | P0 |
+| UC-1 | Upload one or more documents and index them | P0 |
 | UC-2 | List and delete indexed documents | P0 |
 | UC-3 | Ask a question with RAG enabled and receive a streamed answer | P0 |
 | UC-4 | View source citations for an answer | P0 |
@@ -148,7 +148,7 @@ Still out of scope: multi-user accounts, fine-tuning, and a mobile client.
 Checked against a local OpenSearch 2.19 node on port 9200 and Ollama with `llama3.2:1b`.
 
 - [x] Fresh clone + dependencies + OpenSearch + Ollama can run `streamlit run Welcome.py`
-- [x] User can index a PDF and see it in the document list with chunk count
+- [x] User can index a document and see it in the document list with chunk count
 - [x] User can ask a RAG question and see a streamed answer plus Sources
 - [x] Deleting a document removes it from search results
 - [x] With Ollama stopped, Welcome health check shows failure and Chatbot errors clearly
