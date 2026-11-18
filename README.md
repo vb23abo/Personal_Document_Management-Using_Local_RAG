@@ -39,6 +39,8 @@ streamlit run Welcome.py
 
 On startup the app creates the `documents` index and the `nlp-search-pipeline` search pipeline if they are missing.
 
+A recorded walkthrough — index a rent-review letter, ask a question, then delete it — is in [documents/Project_Screenshots/rent-review-walkthrough.mov](documents/Project_Screenshots/rent-review-walkthrough.mov).
+
 ## Settings
 
 Copy [`.env.example`](.env.example) to `.env`. The same defaults live in [`src/constants.py`](src/constants.py).
